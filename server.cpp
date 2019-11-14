@@ -178,6 +178,9 @@ int main(int argc, char **argv) {
       threads.emplace_back([&]() { io_service.run(); });
     }
     io_service.run();
+    for(auto& thread: threads) {
+      thread.join();
+    }
   } catch (std::exception &e) {
     std::cerr << e.what() << std::endl;
   }
