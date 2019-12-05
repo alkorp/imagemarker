@@ -102,6 +102,7 @@ private:
   }
 
   boost::asio::ip::tcp::socket socket_;
+
   std::atomic<int> &num_jobs_;
   const int max_jobs_;
   Frame frame_;
@@ -117,7 +118,10 @@ public:
   Server(ServerParams &&params, boost::asio::io_service &io_service)
       : acceptor_(io_service, boost::asio::ip::tcp::endpoint(
                                   boost::asio::ip::tcp::v4(), params.port)),
-        params_(params), num_jobs_(0) {
+        signals_(io_service), params_(params), num_jobs_(0) {
+    signals_.add(SIGINT);
+    signals_.add(SIGTERM);
+    signals_.async_wait(boost::bind(&Server::HandleStop, this));
     StartAccept();
   }
 
@@ -133,13 +137,18 @@ private:
 
   void HandleAccept(Session::Pointer new_Session,
                     const boost::system::error_code &error) {
+    if (!acceptor_.is_open()) {
+      return;
+    }
     if (!error) {
       new_Session->Start();
     }
     StartAccept();
   }
+  void HandleStop() { acceptor_.close(); }
 
   boost::asio::ip::tcp::acceptor acceptor_;
+  boost::asio::signal_set signals_;
   ServerParams params_;
   std::atomic<int> num_jobs_;
 };
@@ -178,7 +187,7 @@ int main(int argc, char **argv) {
       threads.emplace_back([&]() { io_service.run(); });
     }
     io_service.run();
-    for(auto& thread: threads) {
+    for (auto &thread : threads) {
       thread.join();
     }
   } catch (std::exception &e) {

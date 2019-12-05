@@ -110,7 +110,7 @@ int main(int argc, char *argv[]) {
     }
     // 4. save processed image
     SaveFrameImage(frame, params.out_file);
-  } catch (const IOError &e) {
+  } catch (const std::exception &e) {
     std::cerr << e.what() << std::endl;
   }
   return 0;
